@@ -1,3 +1,10 @@
+CREATE TABLE hopsworks.feature_store_gcs_connector (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    key_path VARCHAR(500) NOT NULL,
+    algorithm VARCHAR(10) NULL,
+    encryption_key VARCHAR(100) NULL,
+    encryption_key_hash VARCHAR(100) NULL
+)  ENGINE=NDBCLUSTER DEFAULT CHARSET=LATIN1 COLLATE = LATIN1_GENERAL_CS;
 -- Add ModelFeature entity
 CREATE TABLE `feature_view` (
                                  `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -18,6 +25,9 @@ CREATE TABLE `feature_view` (
                                      `feature_store` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=ndbcluster AUTO_INCREMENT=9 DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
+
+ALTER TABLE hopsworks.feature_store_connector ADD COLUMN gcs_id INT(11) ;
+ALTER TABLE hopspworks.feature_store_connector ADD CONSTRAINT fs_connector_gcs_fk FOREIGN KEY (gcs_id) REFERENCES hopsworks.feature_store_gcs_connector (id) ON DELETE CASCADE;
 ALTER TABLE `hopsworks`.`training_dataset` ADD COLUMN `feature_view_id` INT(11) DEFAULT NULL;
 ALTER TABLE `hopsworks`.`training_dataset` ADD CONSTRAINT `td_feature_view_fk` FOREIGN KEY
     (`feature_view_id`) REFERENCES `feature_view` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
