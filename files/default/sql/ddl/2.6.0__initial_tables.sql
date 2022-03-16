@@ -1792,13 +1792,23 @@ CREATE TABLE IF NOT EXISTS `feature_store_kafka_connector` (
 ) ENGINE = ndbcluster DEFAULT CHARSET = latin1 COLLATE = latin1_general_cs;
 
 
-CREATE TABLE feature_store_gcs_connector (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    key_path VARCHAR(500) NOT NULL,
-    algorithm VARCHAR(10) NULL,
-    encryption_key VARCHAR(100) NULL,
-    encryption_key_hash VARCHAR(100) NULL
-)  ENGINE=NDBCLUSTER DEFAULT CHARSET=LATIN1 COLLATE = LATIN1_GENERAL_CS;
+CREATE TABLE IF NOT EXISTS `feature_store_gcs_connector` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `algorithm` VARCHAR(10) NULL,
+    `encryption_secret_uid` INT NULL,
+    `encryption_secret_name` VARCHAR(200) NULL,
+    `key_inode_pid` BIGINT(20) NULL,
+    `key_inode_name` VARCHAR(255) NULL,
+    `key_partition_id` BIGINT(20) NULL,
+    PRIMARY KEY (`id`),
+    KEY `fk_fs_storage_connector_gcs_idx` (`encryption_secret_uid`, `encryption_secret_name`),
+    CONSTRAINT `fk_fs_storage_connector_gcs` FOREIGN KEY (`encryption_secret_uid`, `encryption_secret_name`) REFERENCES `hopsworks`.`secrets` (`uid`, `secret_name`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_fs_storage_connector_gcs_keyfile` FOREIGN KEY (
+        `key_inode_pid`,
+        `key_inode_name`,
+        `key_partition_id`
+    ) REFERENCES `hops`.`hdfs_inodes` (`parent_id`, `name`, `partition_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE = ndbcluster DEFAULT CHARSET = latin1 COLLATE = latin1_general_cs;
 
 
 CREATE TABLE IF NOT EXISTS `feature_store_connector` (
@@ -1814,7 +1824,7 @@ CREATE TABLE IF NOT EXISTS `feature_store_connector` (
                                                          `adls_id`                 INT(11),
                                                          `snowflake_id`            INT(11),
                                                          `kafka_id`                INT(11),
-                                                         `gcs_id`                   INT(11),
+                                                         `gcs_id`                  INT(11),
                                                          PRIMARY KEY (`id`),
                                                          UNIQUE KEY `fs_conn_name` (`name`, `feature_store_id`),
                                                          CONSTRAINT `fs_connector_featurestore_fk` FOREIGN KEY (`feature_store_id`) REFERENCES `hopsworks`.`feature_store` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
