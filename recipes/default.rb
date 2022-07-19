@@ -1225,6 +1225,13 @@ kagent_keys "#{hopsworks_user_home}" do
   action :return_publickey
 end
 
+
+
+if node['hops']['docker']['enabled'].eql?("true")
+  include_recipe "hops::docker"
+end
+
+
 registry_addr = { :registry_addr => consul_helper.get_service_fqdn("registry") + ":#{node['hops']['docker']['registry']['port']}"}
 kagent_sudoers "dockerImage" do
   user          node['glassfish']['user']
