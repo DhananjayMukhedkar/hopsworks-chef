@@ -1227,9 +1227,9 @@ end
 
 
 
-if node['hops']['docker']['enabled'].eql?("true")
-  include_recipe "hops::docker"
-end
+# if node['hops']['docker']['enabled'].eql?("true")
+#   include_recipe "hops::docker"
+# end
 
 
 registry_addr = { :registry_addr => consul_helper.get_service_fqdn("registry") + ":#{node['hops']['docker']['registry']['port']}"}
