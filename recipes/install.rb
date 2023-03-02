@@ -104,7 +104,7 @@ end
 
 group node['airflow']['group'] do
   action :modify
-  members ["#{node['hopsworks']['user']}"]  
+  members ["#{node['hopsworks']['user']}"]
   append true
   not_if { node['install']['external_users'].casecmp("true") == 0 }
   only_if "getent group #{node['airflow']['group']}"
@@ -601,50 +601,50 @@ directory "#{ca_dir}/transient" do
   action :create
 end
 
-kagent_sudoers "jupyter" do 
+kagent_sudoers "jupyter" do
   user          node['glassfish']['user']
   group         "root"
   script_name   "jupyter.sh"
   template      "jupyter.sh.erb"
-  run_as        "ALL" # run this as root - inside we change to different users 
+  run_as        "ALL" # run this as root - inside we change to different users
   not_if       { node['install']['kubernetes'].casecmp("true") == 0 }
 end
 
-kagent_sudoers "convert-ipython-notebook" do 
+kagent_sudoers "convert-ipython-notebook" do
   user          node['glassfish']['user']
   group         "root"
   script_name   "convert-ipython-notebook.sh"
   template      "convert-ipython-notebook.sh.erb"
-  run_as        "ALL" # run this as root - inside we change to different users 
+  run_as        "ALL" # run this as root - inside we change to different users
 end
 
-kagent_sudoers "tensorboard" do 
+kagent_sudoers "tensorboard" do
   user          node['glassfish']['user']
   group         "root"
   script_name   "tensorboard.sh"
   template      "tensorboard.sh.erb"
-  run_as        "ALL" # run this as root - inside we change to different users 
+  run_as        "ALL" # run this as root - inside we change to different users
 end
 
-kagent_sudoers "tfserving" do 
+kagent_sudoers "tfserving" do
   user          node['glassfish']['user']
   group         "root"
   script_name   "tfserving.sh"
   template      "tfserving.sh.erb"
-  run_as        "ALL" # run this as root - inside we change to different users 
+  run_as        "ALL" # run this as root - inside we change to different users
   not_if       { node['install']['kubernetes'].casecmp("true") == 0 }
 end
 
-kagent_sudoers "sklearn_serving" do 
+kagent_sudoers "sklearn_serving" do
   user          node['glassfish']['user']
   group         "root"
   script_name   "sklearn_serving.sh"
   template      "sklearn_serving.sh.erb"
-  run_as        "ALL" # run this as root - inside we change to different users 
+  run_as        "ALL" # run this as root - inside we change to different users
   not_if       { node['install']['kubernetes'].casecmp("true") == 0 }
 end
 
-kagent_sudoers "jupyter-project-cleanup" do 
+kagent_sudoers "jupyter-project-cleanup" do
   user          node['glassfish']['user']
   group         "root"
   script_name   "jupyter-project-cleanup.sh"
@@ -658,6 +658,14 @@ kagent_sudoers "git" do
   group         "root"
   script_name   "git.sh"
   template      "git.sh.erb"
+  run_as        "ALL" # run this as root - inside we change to different users
+end
+
+kagent_sudoers "testconnector" do
+  user          node['glassfish']['user']
+  group         "root"
+  script_name   "testconnector-launch.sh"
+  template      "testconnector-launch.sh.erb"
   run_as        "ALL" # run this as root - inside we change to different users
 end
 
@@ -690,7 +698,7 @@ template "#{theDomain}/bin/tfserving-launch.sh" do
 end
 
 ["tensorboard-launch.sh", "tensorboard-cleanup.sh", "condasearch.sh", "list_environment.sh", "jupyter-kill.sh",
- "jupyter-launch.sh", "tfserving-kill.sh", "sklearn_serving-launch.sh", "sklearn_serving-kill.sh", "git-container-kill.sh","testconnector-launch.sh"].each do |script|
+ "jupyter-launch.sh", "tfserving-kill.sh", "sklearn_serving-launch.sh", "sklearn_serving-kill.sh", "git-container-kill.sh"].each do |script|
   template "#{theDomain}/bin/#{script}" do
     source "#{script}.erb"
     owner node['glassfish']['user']
