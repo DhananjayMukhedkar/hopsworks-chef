@@ -389,6 +389,9 @@ default['glassfish']['http']['thread-pool']['maxqueuesize'] = 4096
 
 default['featurestore']['jdbc_url']             = "jdbc:mysql://onlinefs.mysql.service.#{node['consul']['domain']}:#{node['ndb']['mysql_port']}/"
 default['featurestore']['job_activity_timer']   = "5m"
+# aiomysql pool size
+default['featurestore']['min_pool_size'] = 5
+default['featurestore']['max_pool_size'] = 10
 
 # hops-util-py
 default['hopsworks']['requests_verify']       = node['hops']['tls']['enabled']
