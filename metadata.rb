@@ -4,7 +4,7 @@ maintainer_email "jdowling@kth.se"
 license          "Apache v2.0"
 description      "Installs/Configures HopsWorks, the UI for Hops Hadoop."
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
-version          "3.4.0"
+version          "3.8.0"
 source_url       "https://github.com/logicalclocks/hopsworks-chef"
 
 
@@ -45,7 +45,6 @@ recipe  "hopsworks::install", "Installs Glassfish"
 recipe  "hopsworks", "Installs HopsWorks war file, starts glassfish+application."
 recipe  "hopsworks::dev", "Installs development libraries needed for HopsWorks development."
 recipe  "hopsworks::letsencypt", "Given a glassfish installation and a letscrypt installation, update glassfish's key."
-recipe  "hopsworks::image", "Prepare for use as a virtualbox image."
 recipe  "hopsworks::rollback", "Rollback an upgrade to Hopsworks."
 
 recipe  "hopsworks::migrate", "Call expat to migrate between Hopsworks versions"
@@ -80,14 +79,6 @@ attribute "hopsworks/twofactor_auth",
 
 attribute "hopsworks/cert_mater_delay",
           :description => "Delay for the Certificate Materialization service of Hopsworks to delete the certificates from the local fs",
-          :type => 'string'
-
-attribute "hopsworks/service_key_rotation_enabled",
-          :description => "Configuration option to enable/disable automatic service key rotation",
-          :type => 'string'
-
-attribute "hopsworks/service_key_rotation_interval",
-          :description => "Interval for Hops service certificates rotation",
           :type => 'string'
 
 attribute "hopsworks/application_certificate_validity_period",
@@ -256,10 +247,6 @@ attribute "hopsworks/https/ca_url",
 
 attribute "hopsworks/internal/port",
           :description => "Port that the webserver will listen on for internal calls",
-          :type => 'string'
-
-attribute "hopsworks/internal/enable_http",
-          :description => "Enable http. 'false' (default)",
           :type => 'string'
 
 attribute "hopsworks/ha/loadbalancer_port",
@@ -650,6 +637,9 @@ attribute "oauth/logout_redirect_uri",
 attribute "oauth/account_status",
           :description => "Hopsworks account status given for new OAuth user. '1' verified account (default)",
           :type => 'string'
+attribute "oauth/group_mapping_enabled",
+          :description => "Whether or not oauth group mapping is enabled (Default: true)",
+          :type => 'string'
 attribute "oauth/group_mapping",
           :description => "OAuth group to hopsworks group mappings. Format: (groupA-> HOPS_USER,HOPS_ADMIN;groupB->HOPS_USER)",
           :type => 'string'
@@ -782,6 +772,23 @@ attribute "glassfish/reschedule_failed_timer",
 attribute "glassfish/http/request-timeout-seconds",
         :description => "timeout, in seconds, for requests. A value of -1 will disable it. (default 3600)",
         :type => 'string'
+
+# Glassfish http thread pool
+attribute "glassfish/http/thread-pool/maxthreadpoolsize",
+          :description => "The maximum number of threads in the thread pool. (default 200)",
+          :type => 'string'
+
+attribute "glassfish/http/thread-pool/minthreadpoolsize",
+          :description => "The minimum number of threads in the thread pool. (default 5)",
+          :type => 'string'
+
+attribute "glassfish/http/thread-pool/idletimeout",
+          :description => "The maximum amount of time that a thread can remain idle in the pool. After this time expires, the thread is removed from the pool. (default 900)",
+          :type => 'string'
+
+attribute "glassfish/http/thread-pool/maxqueuesize",
+          :description => "The maximum number of threads in the queue. A value of -1 indicates that there is no limit to the queue size. (default 4096)",
+          :type => 'string'
 
 # Online featurestore jdbc connection details
 attribute "featurestore/jdbc_url",
@@ -1010,9 +1017,38 @@ attribute "hopsworks/loadbalancer_external_domain",
           :type => 'string'
 
 attribute "hopsworks/jupyter/remote_fs_driver",
-	  :description => "Driver to interact with HOPSFS. Can be hdfscontentsmanager or hopsfsmount. Default is hdfscontentsmanager.",
+	  :description => "Driver to interact with HOPSFS. Can be hdfscontentsmanager or hopsfsmount. Default is hopsfsmount.",
 	  :type => "string"
 
+# Judge
 attribute "judge/port",
           :description => "Port where the Judge service will be listening on. Default: 5001",
           :type => 'string'
+
+# Opensearch embedding
+attribute "hopsworks/opensearch/default_embedding_index",
+          :description => "Comma separate value of default embedding index name. e.g default_embedding_index_1,default_embedding_index_2. Make sure onlinefs and data scientist have the appropriate permission of the indices.",
+          :type => "string"
+
+attribute "hopsworks/opensearch/num_default_embedding_index",
+          :description => "Number of default embedding index if `default_embedding_index` is not provided.",
+          :type => 'string'
+
+# enable/disable conda install option
+attribute "hopsworks/enable_conda_install",
+          :description => "Boolean value to enable/disable installing libraries with conda option.",
+          :type => "string"
+        
+# Statistics
+attribute "hopsworks/statistics/statistics_cleaner_batch_size",
+        :description => "The maximum number of statistics to be deleted per timer trigger.",
+        :type => "string"
+
+attribute "hopsworks/statistics/statistics_cleaner_interval_ms",
+        :description => "How often the statistics cleaner is triggered.",
+        :type => "string"
+
+# Feature monitoring
+attribute "hopsworks/enable_feature_monitoring",
+        :description => "Whether to enable feature monitoring with scheduling and alerting. Default is false.",
+        :type => 'string'

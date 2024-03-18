@@ -20,7 +20,6 @@ node.override['glassfish']['install_dir'] = "#{node['glassfish']['install_dir']}
 theDomain="#{domains_dir}/#{domain_name}"
 
 public_ip=my_public_ip()
-realmname = "kthfsrealm"
 deployment_group = "hopsworks-dg"
 
 exec = "#{node['ndb']['scripts_dir']}/mysql-client.sh"
@@ -83,44 +82,7 @@ end
 versions.push(target_version)
 current_version = node['hopsworks']['current_version']
 
-# download client archive and set its path to be added to the variables table
-if node['install']['enterprise']['install'].casecmp? "true"
-  file_name = "clients.tar.gz"
-  client_dir = "#{node['install']['dir']}/clients-#{node['hopsworks']['version']}"
-  node.override['hopsworks']['client_path'] = client_dir
-
-  directory client_dir do
-    owner node['glassfish']['user']
-    group node['glassfish']['group']
-    mode "775"
-    action :create
-    recursive true
-  end
-
-  source = "#{node['install']['enterprise']['download_url']}/remote_clients/#{node['hopsworks']['version']}/#{file_name}"
-  remote_file "#{node['hopsworks']['client_path']}/#{file_name}" do
-    user node['glassfish']['user']
-    group node['glassfish']['group']
-    source source
-    headers get_ee_basic_auth_header()
-    sensitive true
-    mode 0555
-    action :create_if_missing
-  end
-
-  bash "extract clients jar" do
-    user node['glassfish']['user']
-    group node['glassfish']['group']
-    cwd client_dir
-    code <<-EOF
-      tar xf #{file_name}
-    EOF
-    not_if { ::Dir.exists?("#{client_dir}/client")}
-  end
-end
-
 if current_version.eql?("")
-
   # Make sure the database is actually empty. Otherwise raise an error
   ruby_block "check_db_empty" do
     block do
@@ -322,14 +284,6 @@ for version in versions do
   end
 end
 
-# Create the users_groups view if it doesn't exists (see HWORKS-457 for explanation)
-bash "create users_groups view" do
-  user "root"
-  code <<-EOH
-    #{node['ndb']['scripts_dir']}/mysql-client.sh hopsworks -e "CREATE OR REPLACE VIEW users_groups AS select u.username AS username, u.password AS password, u.secret AS secret, u.email AS email,g.group_name AS group_name from ((user_group ug join users u on((u.uid = ug.uid))) join bbc_group g on((g.gid = ug.gid)));"
-  EOH
-end
-
 
 ###############################################################################
 # config glassfish
@@ -478,24 +432,6 @@ hopsworks_configure_server "glassfish_configure_network" do
   not_if "#{asadmin_cmd} list-instances | grep running"
 end
 
-if node['hopsworks']['internal']['enable_http'].casecmp?("true")
-  # http internal for load balancer
-  hopsworks_configure_server "glassfish_configure_network" do
-    domain_name domain_name
-    domains_dir domains_dir
-    password_file password_file
-    username username
-    admin_port admin_port
-    asadmin asadmin
-    internal_port node['hopsworks']['internal']['http_port']
-    network_name "http-internal"
-    network_listener_name "http-int-list"
-    securityenabled false
-    action :glassfish_configure_network
-    not_if "#{asadmin_cmd} list-instances | grep running"
-  end
-end
-
 hopsworks_configure_server "glassfish_configure" do
   domain_name domain_name
   domains_dir domains_dir
@@ -525,9 +461,7 @@ glassfish_asadmin "create-managed-executor-service --enabled=true --longrunningt
  not_if "#{asadmin_cmd} list-managed-executor-services | grep 'kagent'"
 end
 
-airflow_exists = false
 if exists_local("hops_airflow", "default")
-  airflow_exists = true
   # In case of an upgrade, attribute-driven-domain will not run but we still need to configure
   # connection pool for Airflow
 
@@ -539,23 +473,6 @@ if exists_local("hops_airflow", "default")
     admin_port admin_port
     secure false
     only_if "#{asadmin_cmd} list-jdbc-connection-pools | grep 'airflowPool$'"
-  end
-
-  glassfish_asadmin "create-jdbc-connection-pool --restype javax.sql.DataSource --datasourceclassname com.mysql.cj.jdbc.MysqlDataSource --ping=true --isconnectvalidatereq=true --validationmethod=auto-commit --description=\"Airflow connection pool\" --property user=#{node['airflow']['mysql_user']}:password=#{node['airflow']['mysql_password']}:url=\"jdbc\\:mysql\\://127.0.0.1\\:3306/\":useSSL=false:allowPublicKeyRetrieval=true airflowPool" do
-    domain_name domain_name
-    password_file password_file
-    username username
-    admin_port admin_port
-    secure false
-  end
-
-  glassfish_asadmin "create-jdbc-resource --connectionpoolid airflowPool --description \"Airflow jdbc resource\" jdbc/airflow" do
-    domain_name domain_name
-    password_file password_file
-    username username
-    admin_port admin_port
-    secure false
-    not_if "#{asadmin_cmd} list-jdbc-resources | grep 'jdbc/airflow$'"
   end
 end
 
@@ -873,9 +790,6 @@ template "#{theDomain}/config/metrics.xml"  do
   group node['hopsworks']['group']
   mode "700"
   action :create
-  variables({
-    :airflow_exists => airflow_exists
-  })
 end
 
 kagent_keys "#{hopsworks_user_home}" do
@@ -920,21 +834,19 @@ kagent_config "glassfish-domain1" do
   action :systemd_reload
 end
 
-# Generate a service JWT token and renewal one-time tokens to be used internally in Hopsworks
-ruby_block "generate_service_jwt" do
+# Generate service API key
+ruby_block "generate_api_key" do
   block do
-    master_token, renew_tokens = get_service_jwt()
-    sql_command_template = "#{node['ndb']['scripts_dir']}/mysql-client.sh -e \"REPLACE INTO hopsworks.variables(id, value, hide) VALUE ('%s', '%s', 1);\""
-    master_token_command = sql_command_template % ['service_master_jwt', master_token]
-    execute_shell_command master_token_command
-
-    idx = 0
-    variable_key_template = "service_renew_token_%d"
-    renew_tokens.each do |token|
-      variable_key = variable_key_template % idx
-      renew_token_command = sql_command_template % [variable_key, token]
-      execute_shell_command renew_token_command
-      idx += 1
+    begin
+      execute_shell_command "#{node['ndb']['scripts_dir']}/mysql-client.sh -e \"SELECT id FROM hopsworks.variables WHERE id='int_service_api_key' AND value != '';\" | grep 'int_service_api_key'"
+      Chef::Log.warn "Internal service API key already exists"
+    rescue
+      api_key_params = {
+        :name => "hw_int_#{my_private_ip()}_#{SecureRandom.hex(6)}",
+        :scope => "AUTH"
+      }
+      api_key = create_api_key(node['kagent']['dashboard']['user'], node['kagent']['dashboard']['password'], api_key_params, hopsworks_ip="127.0.0.1")
+      execute_shell_command "#{node['ndb']['scripts_dir']}/mysql-client.sh -e \"REPLACE INTO hopsworks.variables(id, value, visibility, hide) VALUE ('int_service_api_key', '#{api_key}', 0, 1);\""
     end
   end
 end

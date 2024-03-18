@@ -222,6 +222,41 @@ file "#{node['hopsworks']['env_var_file']}" do
   group node['glassfish']['group']
 end
 
+# download client archive
+if node['install']['enterprise']['install'].casecmp? "true"
+  file_name = "clients.tar.gz"
+  client_dir = "#{node['install']['dir']}/clients-#{node['hopsworks']['version']}"
+
+  directory client_dir do
+    owner node['glassfish']['user']
+    group node['glassfish']['group']
+    mode "775"
+    action :create
+    recursive true
+  end
+
+  source = "#{node['install']['enterprise']['download_url']}/remote_clients/#{node['hopsworks']['version']}/#{file_name}"
+  remote_file "#{node['hopsworks']['client_path']}/#{file_name}" do
+    user node['glassfish']['user']
+    group node['glassfish']['group']
+    source source
+    headers get_ee_basic_auth_header()
+    sensitive true
+    mode 0555
+    action :create_if_missing
+  end
+
+  bash "extract clients jar" do
+    user node['glassfish']['user']
+    group node['glassfish']['group']
+    cwd client_dir
+    code <<-EOF
+      tar xf #{file_name}
+    EOF
+    not_if { ::Dir.exists?("#{client_dir}/client")}
+  end
+end
+
 node.override = {
   'java' => {
     'install_flavor' => node['java']['install_flavor'],
@@ -265,10 +300,10 @@ node.override = {
             'maxqueuesize' => 4096
           },
           'http-thread-pool' => {
-            'maxthreadpoolsize' => 200,
-            'minthreadpoolsize' => 5,
-            'idletimeout' => 900,
-            'maxqueuesize' => 4096
+            'maxthreadpoolsize' => node['glassfish']['http']['thread-pool']['maxthreadpoolsize'],
+            'minthreadpoolsize' => node['glassfish']['http']['thread-pool']['minthreadpoolsize'],
+            'idletimeout' => node['glassfish']['http']['thread-pool']['idletimeout'],
+            'maxqueuesize' => node['glassfish']['http']['thread-pool']['maxqueuesize']
           },
           'admin-pool' => {
             'maxthreadpoolsize' => 40,
@@ -336,28 +371,6 @@ node.override = {
             'resources' => {
               'jdbc/hopsworks' => {
                 'description' => 'Resource for Hopsworks Pool',
-              }
-            }
-          },
-          'airflowPool' => {
-            'config' => {
-              'datasourceclassname' => 'com.mysql.cj.jdbc.MysqlDataSource',
-              'restype' => 'javax.sql.DataSource',
-              'isconnectvalidatereq' => 'true',
-              'validationmethod' => 'auto-commit',
-              'ping' => 'true',
-              'description' => 'Airflow Connection Pool',
-              'properties' => {
-                'Url' => "jdbc:mysql://127.0.0.1:3306/",
-                'User' => node['airflow']['mysql_user'],
-                'Password' => node['airflow']['mysql_password'],
-                'useSSL' => 'false',
-                'allowPublicKeyRetrieval' => 'true'
-              }
-            },
-            'resources' => {
-              'jdbc/airflow' => {
-                'description' => 'Resource for Airflow Pool',
               }
             }
           },
@@ -547,6 +560,18 @@ remote_file "#{theDomain}/lib/#{mysql_connector}"  do
   user node['glassfish']['user']
   group node['glassfish']['group']
   source node['hopsworks']['mysql_connector_url']
+  mode 0755
+  action :create_if_missing
+end
+
+cauth = File.basename(node['hopsworks']['cauth_url'])
+
+remote_file "#{theDomain}/lib/#{cauth}" do
+  user node['glassfish']['user']
+  group node['glassfish']['group']
+  source node['hopsworks']['cauth_url']
+  headers get_ee_basic_auth_header()
+  sensitive true
   mode 0755
   action :create_if_missing
 end

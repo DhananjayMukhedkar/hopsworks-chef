@@ -40,8 +40,6 @@ default['hopsworks']['https']['ca_url']          = ""
 
 default['hopsworks']['internal']['port']         = 8182
 default['hopsworks']['ha']['loadbalancer_port']  = 1080
-default['hopsworks']['internal']['enable_http']  = "false"
-default['hopsworks']['internal']['http_port']    = 28182
 
 default['hopsworks']['admin']['port']            = 4848
 default['hopsworks']['admin']['user']            = "adminuser"
@@ -105,7 +103,9 @@ default['hopsworks']['war_url']                  = "#{node['hopsworks']['downloa
 default['hopsworks']['ca_url']                   = "#{node['hopsworks']['download_url']}/hopsworks-ca.war"
 default['hopsworks']['ear_url']                  = "#{node['hopsworks']['download_url']}/hopsworks-ear#{node['install']['kubernetes'].casecmp?("true") ? "-kube" : ""}.ear"
 
-# Currently we don't have an enterprise version of the new frontend. So the download url is the same for both community and enterprise 
+default['hopsworks']['cauth_url']                = "#{node['hopsworks']['download_url']}/hopsworks-realm.jar"
+
+# Currently we don't have an enterprise version of the new frontend. So the download url is the same for both community and enterprise
 default['hopsworks']['frontend_url']             = "#{node['download_url']}/hopsworks/frontend/#{node['hopsworks']['version']}/frontend.tgz"
 
 default['hopsworks']['logsize']                  = "200000000"
@@ -113,7 +113,6 @@ default['hopsworks']['logsize']                  = "200000000"
 default['hopsworks']['twofactor_auth']              = "false"
 default['hopsworks']['twofactor_exclude_groups']    = "AGENT;CLUSTER_AGENT" #semicolon separated list of roles
 
-default['hopsworks']['service_key_rotation_enabled'] = "false"
 ## Suffix can be: (defaults to minutes if omitted)
 ## ms: milliseconds
 ## s: seconds
@@ -121,7 +120,6 @@ default['hopsworks']['service_key_rotation_enabled'] = "false"
 ## h: hours
 ## d: days
 default['hopsworks']['cert_mater_delay']                            = "3m"
-default['hopsworks']['service_key_rotation_interval']               = "2d"
 default['hopsworks']['application_certificate_validity_period']     = "3650d"
 
 #Time in milliseconds to wait after a TensorBoard is requested before considering it old (and should be killed)
@@ -223,8 +221,7 @@ default['hopsworks']['nonconda_hosts']               = ""
 default['jupyter']['base_dir']                         = node['install']['dir'].empty? ? node['hopsworks']['dir'] + "/jupyter" : node['install']['dir'] + "/jupyter"
 default['jupyter']['shutdown_timer_interval']          = "30m"
 default['jupyter']['ws_ping_interval']                 = "10s"
-# because loadbalancer does not support https
-default['jupyter']['origin_scheme']                    = node['hopsworks']['internal']['enable_http'] == "false" ? "https" : "http"
+default['jupyter']['origin_scheme']                    =  "https"
 
 #
 # Serving
@@ -326,6 +323,7 @@ default['oauth']['enabled']                          = "false"
 default['oauth']['redirect_uri']                     = "hopsworks/callback"
 default['oauth']['logout_redirect_uri']              = "hopsworks/"
 default['oauth']['account_status']                   = 1
+default['oauth']['group_mapping_enabled']            = "true"
 default['oauth']['group_mapping']                    = ""
 
 default['remote_auth']['need_consent']               = "true"
@@ -381,6 +379,10 @@ default['glassfish']['http']['keep_alive_timeout']   = "30"
 default['glassfish']['ejb_loader']['thread_pool_size']   = 8
 # The timeout, in seconds, for requests. A value of -1 will disable it.
 default['glassfish']['http']['request-timeout-seconds']   = "3600"
+default['glassfish']['http']['thread-pool']['maxthreadpoolsize'] = 200
+default['glassfish']['http']['thread-pool']['minthreadpoolsize'] = 5
+default['glassfish']['http']['thread-pool']['idletimeout'] = 900
+default['glassfish']['http']['thread-pool']['maxqueuesize'] = 4096
 
 
 #
@@ -408,7 +410,7 @@ default['hopsworks']['provenance']['archive']['delay']        = "86400"
 default['hopsworks']['provenance']['cleaner']['period']       = "3600"
 
 # clients
-default['hopsworks']['client_path']           = "COMMUNITY"
+default['hopsworks']['client_path']           = node['install']['enterprise']['install'].casecmp?("true") ? "#{node['install']['dir']}/clients-#{node['hopsworks']['version']}" : "COMMUNITY"
 
 # hdfs storage policy
 # accepted hopsworks storage policy files: CLOUD, DB, HOT
@@ -431,6 +433,8 @@ default['hopsworks']['docker-job']['docker_job_uid_strict'] = "true"
 default['hopsworks']['job']['executions_per_job_limit'] = "10000"
 default['hopsworks']['job']['executions_cleaner_batch_size'] = "1000"
 default['hopsworks']['job']['executions_cleaner_interval_ms'] = "600000"
+
+default['hopsworks']['job']['mount_hopsfs_in_python_job'] = "true"
 
 default['hopsworks']['enable_user_search'] = "true"
 
@@ -508,7 +512,7 @@ default['hopsworks']['enable_flyingduck'] = "false"
 default['hopsworks']['loadbalancer_external_domain'] = ""
 
 # jupyter hopsfs mount
-default['hopsworks']['jupyter']['remote_fs_driver'] = "hdfscontentsmanager"
+default['hopsworks']['jupyter']['remote_fs_driver'] = "hopsfsmount"
 default['hopsworks']['jupyter']['hopsfs_dir']       = "/home/#{node['hops']['yarnapp']['user']}/hopsfs"
 
 default['hopsworks']['commands']['search_fs']['history']['enable'] = "false"
@@ -517,11 +521,36 @@ default['hopsworks']['commands']['search_fs']['history']['clean_period_as_ms'] =
 default['hopsworks']['commands']['search_fs']['history']['retry'] = 5
 default['hopsworks']['commands']['search_fs']['process']['period_as_ms'] = 1000
 
+##
+## Judge
+##
 default['judge']['image_url'] = "#{node['download_url']}/nginx-stable-bullseye.tar"
 default['judge']['port']      = "1111"
 default['judge']['home']      = "#{node['install']['dir']}/judge"
 default['judge']['etc']       = "#{node['judge']['home']}/etc"
 default['judge']['logs']      = "#{node['judge']['home']}/logs"
+
+##
+## Opensearch embedding db
+##
+default['hopsworks']['opensearch']['default_embedding_index']     = node['hopsworks']['opensearch']['default_embedding_index'].to_s.empty? ? "" : node['hopsworks']['opensearch']['default_embedding_index']
+default['hopsworks']['opensearch']['num_default_embedding_index'] = node['hopsworks']['opensearch']['num_default_embedding_index'].to_s.empty? ? 1 : node['hopsworks']['opensearch']['num_default_embedding_index']
+
+# enable conda install HWORKS-302
+default['hopsworks']['enable_conda_install'] = "true"
+
+##
+## Statistics
+##
+default['hopsworks']['statistics']['statistics_cleaner_batch_size'] = "1000"
+default['hopsworks']['statistics']['statistics_cleaner_interval_ms'] = "900000"
+
+##
+## Feature Monitoring
+##
+default['hopsworks']['enable_feature_monitoring'] = "false"
+
+
 
 
 default['hopsworks']['rstudio_dir'] = node['hopsworks']['dir'] + "/rstudio"

@@ -33,6 +33,10 @@ REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdo
 REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdog_interval", "<%= node['hops']['alive-watchdog']['interval'] %>");
 REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdog_url", "<%= node['hops']['alive-watchdog']['http-poll']['url'] %>");
 REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdog_region", "<%= node['hops']['alive-watchdog']['json-poll']['dc-id'] %>");
+REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdog_enabled", "<%= node['hops']['alive-watchdog']['enabled'] %>");
+REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdog_interval", "<%= node['hops']['alive-watchdog']['interval'] %>");
+REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdog_url", "<%= node['hops']['alive-watchdog']['http-poll']['url'] %>");
+REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("multiregion_watchdog_region", "<%= node['hops']['alive-watchdog']['json-poll']['dc-id'] %>");
 
 REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("rstudio_host", "<%= node['hopsworks']['rstudio_host'] %>");
 REPLACE INTO `hopsworks`.`variables`(`id`, `value`) VALUES ("rstudio_origin_scheme", "<%= node['hopsworks']['rstudio_origin_scheme'] %>");
